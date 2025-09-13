@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33815.320
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "people-pdf", "people-pdf\people-pdf.csproj", "{009EBA94-3A2E-456E-90A5-BFBA15D3D05B}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "People-PDF-setup", "People-PDF-setup\People-PDF-setup.vdproj", "{C052DD65-C9CF-F627-9A71-341F3FB9C83D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{009EBA94-3A2E-456E-90A5-BFBA15D3D05B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{009EBA94-3A2E-456E-90A5-BFBA15D3D05B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{009EBA94-3A2E-456E-90A5-BFBA15D3D05B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{009EBA94-3A2E-456E-90A5-BFBA15D3D05B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C052DD65-C9CF-F627-9A71-341F3FB9C83D}.Debug|Any CPU.ActiveCfg = Debug
+		{C052DD65-C9CF-F627-9A71-341F3FB9C83D}.Release|Any CPU.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65BCD0FA-3AE2-49DD-B051-61A89FE8A344}
+	EndGlobalSection
+EndGlobal

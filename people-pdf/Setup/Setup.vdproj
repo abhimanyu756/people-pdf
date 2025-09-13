@@ -1,0 +1,63 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{1421D441-3C71-4B33-94D9-9D0BD82DAA8D}</ProjectGuid>
+    <OutputType>Package</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Setup</RootNamespace>
+    <AssemblyName>Setup</AssemblyName>
+    <ProductName>Leave and License Agreement Generator</ProductName>
+    <ProductVersion>1.0.0</ProductVersion>
+    <Manufacturer>Abhimanyu</Manufacturer>
+    <RequireAdministrator>true</RequireAdministrator>
+    <TARGETDIR>"[ProgramFilesFolder][Manufacturer]\[ProductName]"</TARGETDIR>
+    <TargetFrameworkVersion>net8.0-windows</TargetFrameworkVersion>
+    <DetectNewerInstalledVersion>true</DetectNewerInstalledVersion>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <PreRequisites>
+      <Prerequisite Name=".NET Desktop Runtime 8.0"
+                   DisplayName=".NET Desktop Runtime 8.0"
+                   DisplayVersion="8.0.0"
+                   MinVersion="8.0.0"/>
+    </PreRequisites>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\people-pdf\people-pdf.csproj">
+      <Name>people-pdf</Name>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <MergeModules Include="Microsoft_VC142_CRT_x64.msm"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Dependency Include="iTextSharp.dll">
+      <Version>5.5.13.4</Version>
+      <Private>True</Private>
+    </Dependency>
+    <Dependency Include="PDFsharp.dll">
+      <Version>6.2.1</Version>
+      <Private>True</Private>
+    </Dependency>
+    <Dependency Include="AForge.dll">
+      <Version>2.2.5</Version>
+      <Private>True</Private>
+    </Dependency>
+    <Dependency Include="AForge.Video.dll">
+      <Version>2.2.5</Version>
+      <Private>True</Private>
+    </Dependency>
+    <Dependency Include="AForge.Video.DirectShow.dll">
+      <Version>2.2.5</Version>
+      <Private>True</Private>
+    </Dependency>
+  </ItemGroup>
+</Project>
