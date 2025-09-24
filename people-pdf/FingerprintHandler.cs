@@ -3,149 +3,261 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Forms;
-using SecuGen.FDxSDKPro.Windows;
 
 namespace people_pdf
 {
     public class FingerprintHandler : IDisposable
     {
-        private SGFingerPrintManager m_FPM;
-        private bool m_bInit;
-        private bool m_bSecuGenDeviceOpened;
-        private Int32 m_ImageWidth;
-        private Int32 m_ImageHeight;
-        private Int32 m_ImageDPI;
-        private Int32 mMaxTemplateSize;
+        private object m_FPM; // Changed to object to avoid initialization issues
+        private bool m_bInit = false;
+        private bool m_bSecuGenDeviceOpened = false;
+        private bool m_bSDKAvailable = false;
+        private Int32 m_ImageWidth = 320; // Default values
+        private Int32 m_ImageHeight = 240;
+        private Int32 m_ImageDPI = 500;
+        private Int32 mMaxTemplateSize = 1024;
         private Byte[] m_RegMin;
         private Byte[] m_VrfMin;
 
         public FingerprintHandler()
         {
-            m_FPM = new SGFingerPrintManager();
+            // Don't initialize SDK in constructor to avoid startup crashes
             m_bInit = false;
             m_bSecuGenDeviceOpened = false;
+            m_bSDKAvailable = false;
         }
 
         public bool InitializeDevice()
         {
             try
             {
-                // Initialize the fingerprint manager
-                SGFPMError err = (SGFPMError)m_FPM.Init((SecuGen.FDxSDKPro.Windows.SGFPMDeviceName)SGFPMDeviceName.DEV_AUTO);
-                if (err != SGFPMError.SGFPM_OK)
+                // Try to check if SecuGen assemblies are available
+                var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                bool secuGenAssemblyFound = false;
+
+                foreach (var assembly in assemblies)
                 {
-                    MessageBox.Show($"Failed to initialize fingerprint device. Error: {err}",
-                                  "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    if (assembly.FullName.Contains("SecuGen"))
+                    {
+                        secuGenAssemblyFound = true;
+                        break;
+                    }
+                }
+
+                // Try to create SecuGen fingerprint manager using reflection to avoid compile-time dependency
+                var secuGenType = Type.GetType("SecuGen.FDxSDKPro.Windows.SGFingerPrintManager, SecuGen.FDxSDKPro.Windows");
+                if (secuGenType == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("SecuGen SDK not found - fingerprint scanning disabled");
+                    return false;
+                }
+
+                // Create instance using reflection
+                m_FPM = Activator.CreateInstance(secuGenType);
+                if (m_FPM == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Failed to create SecuGen manager instance");
+                    return false;
+                }
+
+                // Try to call Init method using reflection
+                var initMethod = secuGenType.GetMethod("Init");
+                if (initMethod == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("SecuGen Init method not found");
+                    return false;
+                }
+
+                // Get the device name enum value (DEV_AUTO = 0)
+                var result = initMethod.Invoke(m_FPM, new object[] { 0 });
+                int errorCode = Convert.ToInt32(result);
+
+                if (errorCode != 0) // SGFPM_OK = 0
+                {
+                    System.Diagnostics.Debug.WriteLine($"SecuGen initialization failed with error: {errorCode}");
                     return false;
                 }
 
                 m_bInit = true;
 
-                // Get device count
-                Int32 ndevices = 0;
-                err = m_FPM.GetDeviceCount(ref ndevices);
-                if (err != SGFPMError.SGFPM_OK || ndevices == 0)
+                // Try to get device count
+                var getDeviceCountMethod = secuGenType.GetMethod("GetDeviceCount");
+                if (getDeviceCountMethod != null)
                 {
-                    MessageBox.Show("No SecuGen fingerprint devices found.",
-                                  "Device Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
+                    object[] parameters = new object[] { 0 };
+                    var deviceCountResult = getDeviceCountMethod.Invoke(m_FPM, parameters);
+                    int deviceCountError = Convert.ToInt32(deviceCountResult);
+                    int deviceCount = (int)parameters[0];
+
+                    if (deviceCountError != 0 || deviceCount == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("No SecuGen devices found");
+                        return false;
+                    }
+
+                    // Try to open first device
+                    var openDeviceMethod = secuGenType.GetMethod("OpenDevice");
+                    if (openDeviceMethod != null)
+                    {
+                        var openResult = openDeviceMethod.Invoke(m_FPM, new object[] { 0 });
+                        int openError = Convert.ToInt32(openResult);
+
+                        if (openError != 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to open SecuGen device: {openError}");
+                            return false;
+                        }
+
+                        m_bSecuGenDeviceOpened = true;
+
+                        // Try to get device info
+                        var getDeviceInfoMethod = secuGenType.GetMethod("GetDeviceInfo");
+                        if (getDeviceInfoMethod != null)
+                        {
+                            // Create device info structure
+                            var deviceInfoType = Type.GetType("SecuGen.FDxSDKPro.Windows.SGFPMDeviceInfoParam, SecuGen.FDxSDKPro.Windows");
+                            if (deviceInfoType != null)
+                            {
+                                var deviceInfo = Activator.CreateInstance(deviceInfoType);
+                                object[] infoParams = new object[] { deviceInfo };
+                                var infoResult = getDeviceInfoMethod.Invoke(m_FPM, infoParams);
+                                int infoError = Convert.ToInt32(infoResult);
+
+                                if (infoError == 0)
+                                {
+                                    // Get device info properties using reflection
+                                    var updatedDeviceInfo = infoParams[0];
+                                    var widthField = deviceInfoType.GetField("ImageWidth");
+                                    var heightField = deviceInfoType.GetField("ImageHeight");
+                                    var dpiField = deviceInfoType.GetField("ImageDPI");
+                                    var templateSizeField = deviceInfoType.GetField("MaxTemplateSize");
+
+                                    if (widthField != null) m_ImageWidth = (int)widthField.GetValue(updatedDeviceInfo);
+                                    if (heightField != null) m_ImageHeight = (int)heightField.GetValue(updatedDeviceInfo);
+                                    if (dpiField != null) m_ImageDPI = (int)dpiField.GetValue(updatedDeviceInfo);
+                                    if (templateSizeField != null) mMaxTemplateSize = (int)templateSizeField.GetValue(updatedDeviceInfo);
+
+                                    // Initialize template arrays
+                                    m_RegMin = new Byte[mMaxTemplateSize];
+                                    m_VrfMin = new Byte[mMaxTemplateSize];
+                                }
+                            }
+                        }
+
+                        m_bSDKAvailable = true;
+                        System.Diagnostics.Debug.WriteLine("SecuGen device initialized successfully");
+                        return true;
+                    }
                 }
 
-                // Open the first device
-                err = m_FPM.OpenDevice(0);
-                if (err != SGFPMError.SGFPM_OK)
-                {
-                    MessageBox.Show($"Failed to open fingerprint device. Error: {err}",
-                                  "Device Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
-
-                m_bSecuGenDeviceOpened = true;
-
-                // Get device info
-                SGFPMDeviceInfoParam deviceInfo = new SGFPMDeviceInfoParam();
-                err = m_FPM.GetDeviceInfo(ref deviceInfo);
-                if (err == SGFPMError.SGFPM_OK)
-                {
-                    m_ImageWidth = deviceInfo.ImageWidth;
-                    m_ImageHeight = deviceInfo.ImageHeight;
-                    m_ImageDPI = deviceInfo.ImageDPI;
-                    mMaxTemplateSize = deviceInfo.MaxTemplateSize;
-
-                    // Initialize template arrays
-                    m_RegMin = new Byte[mMaxTemplateSize];
-                    m_VrfMin = new Byte[mMaxTemplateSize];
-                }
-
-                return true;
+                return false;
+            }
+            catch (System.IO.FileNotFoundException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SecuGen DLL not found: {ex.Message}");
+                return false;
+            }
+            catch (System.BadImageFormatException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SecuGen DLL architecture mismatch: {ex.Message}");
+                return false;
+            }
+            catch (System.TypeLoadException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SecuGen SDK types not available: {ex.Message}");
+                return false;
+            }
+            catch (System.Reflection.TargetInvocationException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SecuGen SDK invocation error: {ex.InnerException?.Message ?? ex.Message}");
+                return false;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error initializing fingerprint device: {ex.Message}",
-                              "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"General SecuGen initialization error: {ex.Message}");
                 return false;
             }
         }
 
         public bool CaptureFingerprint(PictureBox pictureBox)
         {
-            if (!m_bInit || !m_bSecuGenDeviceOpened)
+            if (!m_bInit || !m_bSecuGenDeviceOpened || !m_bSDKAvailable || m_FPM == null)
             {
-                MessageBox.Show("Fingerprint device not initialized or opened.",
-                              "Device Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Fingerprint scanner is not available.\n\nPlease use the 'Upload' button to load a fingerprint image file instead.",
+                    "Scanner Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
 
             try
             {
-                // Create image buffer
-                Byte[] fp_image = new Byte[m_ImageWidth * m_ImageHeight];
-                Int32 img_qlty = 0;
-                Int32 minutiae_count = 0;
-
                 // Show capture dialog
                 using (Form captureForm = CreateCaptureForm())
                 {
                     if (captureForm.ShowDialog() == DialogResult.OK)
                     {
-                        // Capture fingerprint image
-                        SGFPMError err = m_FPM.GetImage(fp_image);
-                        if (err != SGFPMError.SGFPM_OK)
-                        {
-                            MessageBox.Show($"Failed to capture fingerprint image. Error: {err}",
-                                          "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return false;
-                        }
+                        // Try to capture using reflection
+                        var fpManagerType = m_FPM.GetType();
+                        var getImageMethod = fpManagerType.GetMethod("GetImage");
 
-                        // Get image quality
-                        err = m_FPM.GetImageQuality(m_ImageWidth, m_ImageHeight, fp_image, ref img_qlty);
-                        if (err != SGFPMError.SGFPM_OK)
+                        if (getImageMethod != null)
                         {
-                            MessageBox.Show("Failed to get image quality.",
-                                          "Quality Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        }
+                            // Create image buffer
+                            Byte[] fp_image = new Byte[m_ImageWidth * m_ImageHeight];
 
-                        // Check if quality is acceptable (you can adjust this threshold)
-                        if (img_qlty < 50) // Quality threshold (0-100)
-                        {
-                            MessageBox.Show($"Fingerprint quality too low ({img_qlty}). Please try again.",
-                                          "Quality Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            return false;
-                        }
+                            var result = getImageMethod.Invoke(m_FPM, new object[] { fp_image });
+                            int errorCode = Convert.ToInt32(result);
 
-                        // Convert to bitmap and display in PictureBox
-                        Bitmap bitmap = ConvertRawImageToBitmap(fp_image, m_ImageWidth, m_ImageHeight);
-                        if (bitmap != null)
-                        {
-                            pictureBox.Image = bitmap;
-                            MessageBox.Show($"Fingerprint captured successfully! Quality: {img_qlty}%",
-                                          "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            return true;
+                            if (errorCode != 0) // SGFPM_OK = 0
+                            {
+                                MessageBox.Show($"Failed to capture fingerprint image. Error: {errorCode}",
+                                    "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return false;
+                            }
+
+                            // Try to get image quality
+                            var getQualityMethod = fpManagerType.GetMethod("GetImageQuality");
+                            int img_qlty = 100; // Default quality
+
+                            if (getQualityMethod != null)
+                            {
+                                object[] qualityParams = new object[] { m_ImageWidth, m_ImageHeight, fp_image, 0 };
+                                var qualityResult = getQualityMethod.Invoke(m_FPM, qualityParams);
+                                int qualityError = Convert.ToInt32(qualityResult);
+
+                                if (qualityError == 0)
+                                {
+                                    img_qlty = (int)qualityParams[3];
+                                }
+                            }
+
+                            // Check quality threshold
+                            if (img_qlty < 50)
+                            {
+                                MessageBox.Show($"Fingerprint quality too low ({img_qlty}%). Please try again.",
+                                    "Quality Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return false;
+                            }
+
+                            // Convert to bitmap and display
+                            Bitmap bitmap = ConvertRawImageToBitmap(fp_image, m_ImageWidth, m_ImageHeight);
+                            if (bitmap != null)
+                            {
+                                pictureBox.Image = bitmap;
+                                MessageBox.Show($"Fingerprint captured successfully! Quality: {img_qlty}%",
+                                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                return true;
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to convert fingerprint image.",
+                                    "Conversion Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return false;
+                            }
                         }
                         else
                         {
-                            MessageBox.Show("Failed to convert fingerprint image.",
-                                          "Conversion Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show("SecuGen GetImage method not available.",
+                                "Method Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return false;
                         }
                     }
@@ -154,7 +266,7 @@ namespace people_pdf
             catch (Exception ex)
             {
                 MessageBox.Show($"Error capturing fingerprint: {ex.Message}",
-                              "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return false;
@@ -165,7 +277,7 @@ namespace people_pdf
             Form captureForm = new Form
             {
                 Text = "Fingerprint Capture",
-                Size = new Size(400, 200),
+                Size = new Size(450, 250),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -175,18 +287,28 @@ namespace people_pdf
 
             Label instructionLabel = new Label
             {
-                Text = "Please place your finger on the scanner and click 'Capture'",
+                Text = "Please place your finger on the scanner and click 'Capture Fingerprint'",
                 Location = new Point(20, 30),
-                Size = new Size(350, 40),
+                Size = new Size(400, 40),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 10),
                 ForeColor = Color.FromArgb(64, 64, 64)
             };
 
+            Label statusLabel = new Label
+            {
+                Text = "Scanner Status: Ready",
+                Location = new Point(20, 80),
+                Size = new Size(400, 25),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9),
+                ForeColor = Color.Green
+            };
+
             Button captureButton = new Button
             {
                 Text = "Capture Fingerprint",
-                Location = new Point(100, 80),
+                Location = new Point(120, 120),
                 Size = new Size(150, 35),
                 BackColor = Color.FromArgb(0, 120, 215),
                 ForeColor = Color.White,
@@ -199,7 +321,7 @@ namespace people_pdf
             Button cancelButton = new Button
             {
                 Text = "Cancel",
-                Location = new Point(260, 80),
+                Location = new Point(280, 120),
                 Size = new Size(100, 35),
                 BackColor = Color.FromArgb(128, 128, 128),
                 ForeColor = Color.White,
@@ -210,6 +332,7 @@ namespace people_pdf
             cancelButton.FlatAppearance.BorderSize = 0;
 
             captureForm.Controls.Add(instructionLabel);
+            captureForm.Controls.Add(statusLabel);
             captureForm.Controls.Add(captureButton);
             captureForm.Controls.Add(cancelButton);
 
@@ -232,7 +355,7 @@ namespace people_pdf
 
                 // Lock bitmap data
                 BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, width, height),
-                                                   ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                    ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
 
                 // Copy raw data to bitmap
                 System.Runtime.InteropServices.Marshal.Copy(rawImage, 0, bmpData.Scan0, rawImage.Length);
@@ -244,8 +367,7 @@ namespace people_pdf
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error converting image: {ex.Message}",
-                              "Conversion Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error converting fingerprint image: {ex.Message}");
                 return null;
             }
         }
@@ -254,34 +376,53 @@ namespace people_pdf
         {
             try
             {
-                if (m_bSecuGenDeviceOpened)
+                if (m_bSecuGenDeviceOpened && m_FPM != null)
                 {
-                    m_FPM.CloseDevice();
+                    var fpManagerType = m_FPM.GetType();
+                    var closeDeviceMethod = fpManagerType.GetMethod("CloseDevice");
+                    closeDeviceMethod?.Invoke(m_FPM, null);
                     m_bSecuGenDeviceOpened = false;
                 }
 
-                if (m_bInit)
+                if (m_bInit && m_FPM != null)
                 {
-                    m_FPM.Close();
+                    var fpManagerType = m_FPM.GetType();
+                    var closeMethod = fpManagerType.GetMethod("Close");
+                    closeMethod?.Invoke(m_FPM, null);
                     m_bInit = false;
                 }
+
+                m_bSDKAvailable = false;
             }
             catch (Exception ex)
             {
-                // Log error but don't show message box during cleanup
                 System.Diagnostics.Debug.WriteLine($"Error closing fingerprint device: {ex.Message}");
             }
         }
 
         public bool IsDeviceReady()
         {
-            return m_bInit && m_bSecuGenDeviceOpened;
+            return m_bInit && m_bSecuGenDeviceOpened && m_bSDKAvailable;
         }
 
         public void Dispose()
         {
             CloseDevice();
-            m_FPM?.Dispose();
+
+            try
+            {
+                if (m_FPM != null)
+                {
+                    var fpManagerType = m_FPM.GetType();
+                    var disposeMethod = fpManagerType.GetMethod("Dispose");
+                    disposeMethod?.Invoke(m_FPM, null);
+                    m_FPM = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error disposing fingerprint manager: {ex.Message}");
+            }
         }
     }
 }
