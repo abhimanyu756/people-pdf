@@ -32,14 +32,20 @@ namespace people_pdf
             try
             {
                 // Try to check if SecuGen assemblies are available
+                
+                System.Diagnostics.Debug.WriteLine("Starting fingerprint device initialization...");
+                System.Diagnostics.Debug.WriteLine($"Current directory: {System.IO.Directory.GetCurrentDirectory()}");
+
                 var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
                 bool secuGenAssemblyFound = false;
 
                 foreach (var assembly in assemblies)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Loaded assembly: {assembly.FullName}");
                     if (assembly.FullName.Contains("SecuGen"))
                     {
                         secuGenAssemblyFound = true;
+                        System.Diagnostics.Debug.WriteLine("Found SecuGen assembly!");
                         break;
                     }
                 }

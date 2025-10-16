@@ -31,10 +31,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="SecuGen.FDxSDKPro.DotNet.Windows">
-      <HintPath>C:\Users\abc\Downloads\FDx SDK Pro for Windows v4.21_J1.12\FDx SDK Pro for Windows v4.21_J1.12\FDx SDK Pro for Windows v4.21\DotNET\Bin\x64\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
+    <Reference Include="SecuGen.FDxSDKPro.DotNet.Windows">  
+      <HintPath>lib\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+ 
 
   <ItemGroup>
     <None Update="sgbledev.dll">

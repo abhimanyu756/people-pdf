@@ -10,7 +10,7 @@ namespace people_pdf
     public partial class Form1 : Form
     {
         private SaveFileDialog saveFileDialogPdf;
-        private ComboBox comboBoxAgreementType;
+        private ComboBox comboBoxAgreementType;         
         private FingerprintHandler fingerprintHandler;
 
         // Party 1
@@ -158,7 +158,7 @@ namespace people_pdf
             };
             comboBoxAgreementType.Items.AddRange(new string[] { "Affidavit", "Agreement" });
             comboBoxAgreementType.SelectedIndex = 0;
-
+                
             // Add device status labels
             Label lblFingerprintStatus = new Label
             {
