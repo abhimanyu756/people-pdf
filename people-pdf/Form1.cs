@@ -9,7 +9,7 @@ namespace people_pdf
 {
     public partial class Form1 : Form
     {
-        private SaveFileDialog saveFileDialogPdf;
+        private SaveFileDialog saveFileDialogPdf;   
         private ComboBox comboBoxAgreementType;         
         private FingerprintHandler fingerprintHandler;
 
