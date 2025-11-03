@@ -1,60 +1,69 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <RootNamespace>people_pdf</RootNamespace>
-    <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <PlatformTarget>x86</PlatformTarget>
-    <Configurations>Debug;Release;people-pdf-running</Configurations>
-    <Platforms>AnyCPU;x64;x86</Platforms>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<RootNamespace>people_pdf</RootNamespace>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<PlatformTarget>x86</PlatformTarget>
+		<Configurations>Debug;Release;people-pdf-running</Configurations>
+		<Platforms>AnyCPU;x64;x86</Platforms>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <Optimize>True</Optimize>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<Optimize>True</Optimize>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Optimize>True</Optimize>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+		<Optimize>True</Optimize>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <Optimize>True</Optimize>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+		<Optimize>True</Optimize>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="SecuGenPInvokeWrapper.cs" />
-  </ItemGroup>
- 
-  <ItemGroup>
-    <None Include="Setup\Setup.vdproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="SecuGenPInvokeWrapper.cs" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AForge" Version="2.2.5" />
-    <PackageReference Include="AForge.Video" Version="2.2.5" />
-    <PackageReference Include="AForge.Video.DirectShow" Version="2.2.5" />
-    <PackageReference Include="iTextSharp" Version="5.5.13.4" />
-    <PackageReference Include="PDFsharp" Version="6.2.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="Setup\Setup.vdproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="SecuGen.FDxSDKPro.DotNet.Windows">  
-      <HintPath>lib\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="AForge" Version="2.2.5" />
+		<PackageReference Include="AForge.Video" Version="2.2.5" />
+		<PackageReference Include="AForge.Video.DirectShow" Version="2.2.5" />
+		<PackageReference Include="iTextSharp" Version="5.5.13.4" />
+		<PackageReference Include="PDFsharp" Version="6.2.1" />
+	</ItemGroup>
 
- 
+	<ItemGroup>
+		<!-- CRITICAL: Use SecuGen.FDxSDKPro.DotNet.Windows.dll for .NET 6+ -->
+		<Reference Include="SecuGen.FDxSDKPro.DotNet.Windows">
+			<HintPath>lib\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
+			<Private>True</Private>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Reference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="sgfdusdax64.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="sgfplib.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<!-- Native DLLs required by SecuGen SDK -->
+		<None Update="sgfplib.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="sgfpamx.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="sgwsqlib.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<!-- Only include if you have x64 version -->
+		<None Update="sgfdusdax64.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>
