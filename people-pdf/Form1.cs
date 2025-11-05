@@ -107,16 +107,22 @@ namespace people_pdf
             try
             {
                 fingerprintHandler = new FingerprintHandler();
-                if (!fingerprintHandler.InitializeDevice())
+                bool deviceReady = fingerprintHandler.InitializeDevice();
+
+                if (!deviceReady)
                 {
-                    MessageBox.Show("Warning: Fingerprint device not available. You can still upload fingerprint images manually.",
-                        "Device Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    System.Diagnostics.Debug.WriteLine("Fingerprint device not available - using upload feature only");
+                    // Don't show a dialog - just disable the scan buttons (already done in CreatePartyControls)
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Fingerprint device ready!");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error initializing fingerprint handler: {ex.Message}\n\nYou can still upload fingerprint images manually.",
-                    "Initialization Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                System.Diagnostics.Debug.WriteLine($"Fingerprint handler error: {ex.Message}");
+                // Don't show error dialog - the app will work without fingerprint scanner
             }
         }
 

@@ -19,9 +19,11 @@ namespace people_pdf
         private Byte[] m_RegMin;
         private Byte[] m_VrfMin;
         private Assembly secuGenAssembly = null;
+        private Type fpManagerType = null;
 
         public FingerprintHandler()
         {
+            System.Diagnostics.Debug.WriteLine("*** FingerprintHandler constructor called ***");
             m_bInit = false;
             m_bSecuGenDeviceOpened = false;
         }
@@ -30,55 +32,50 @@ namespace people_pdf
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("=== Starting fingerprint device initialization ===");
+                System.Diagnostics.Debug.WriteLine("=====================================");
+                System.Diagnostics.Debug.WriteLine("=== FINGERPRINT INITIALIZATION v3 ===");
+                System.Diagnostics.Debug.WriteLine("=====================================");
                 System.Diagnostics.Debug.WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
+                System.Diagnostics.Debug.WriteLine($"Running as: {(Environment.Is64BitProcess ? "x64 (64-bit)" : "x86 (32-bit)")}");
 
                 // STEP 1: Load the SecuGen assembly
                 string[] possiblePaths = new string[]
                 {
-                    // Try .NET 6+ version first
                     Path.Combine(Directory.GetCurrentDirectory(), "SecuGen.FDxSDKPro.DotNet.Windows.dll"),
                     Path.Combine(Directory.GetCurrentDirectory(), "lib", "SecuGen.FDxSDKPro.DotNet.Windows.dll"),
-                    // Try .NET Framework version
-                    Path.Combine(Directory.GetCurrentDirectory(), "SecuGen.FDxSDKPro.Windows.dll"),
-                    Path.Combine(Directory.GetCurrentDirectory(), "lib", "SecuGen.FDxSDKPro.Windows.dll"),
                 };
 
+                System.Diagnostics.Debug.WriteLine("\n=== Loading SecuGen DLL ===");
                 foreach (string path in possiblePaths)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Checking: {path}");
                     if (File.Exists(path))
                     {
-                        System.Diagnostics.Debug.WriteLine($"Found DLL at: {path}");
+                        System.Diagnostics.Debug.WriteLine($"Found at: {path}");
                         try
                         {
                             secuGenAssembly = Assembly.LoadFrom(path);
-                            System.Diagnostics.Debug.WriteLine($"Loaded: {secuGenAssembly.FullName}");
+                            System.Diagnostics.Debug.WriteLine($"✓ Loaded: {secuGenAssembly.FullName}");
                             break;
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Failed to load: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"✗ Load failed: {ex.Message}");
                         }
                     }
                 }
 
                 if (secuGenAssembly == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: SecuGen DLL not found");
+                    System.Diagnostics.Debug.WriteLine("✗ SecuGen DLL not found");
                     return false;
                 }
 
-                // STEP 2: Find SGFingerPrintManager class (correct name from PDF)
-                System.Diagnostics.Debug.WriteLine("\nLooking for SGFingerPrintManager class...");
-                Type fpManagerType = null;
-
-                // According to PDF: namespace is SecuGen.FDxSDKPro.Windows
-                // Try both .NET 6+ and .NET Framework namespaces
+                // STEP 2: Find SGFingerPrintManager class
+                System.Diagnostics.Debug.WriteLine("\n=== Finding SGFingerPrintManager ===");
                 string[] possibleTypeNames = new string[]
                 {
-                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFingerPrintManager",
-                    "SecuGen.FDxSDKPro.Windows.SGFingerPrintManager"
+                    "SecuGen.FDxSDKPro.Windows.SGFingerPrintManager",
+                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFingerPrintManager"
                 };
 
                 foreach (string typeName in possibleTypeNames)
@@ -86,39 +83,56 @@ namespace people_pdf
                     fpManagerType = secuGenAssembly.GetType(typeName);
                     if (fpManagerType != null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Found: {typeName}");
+                        System.Diagnostics.Debug.WriteLine($"✓ Found: {typeName}");
                         break;
                     }
                 }
 
                 if (fpManagerType == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: SGFingerPrintManager not found");
-                    System.Diagnostics.Debug.WriteLine("Available types:");
-                    foreach (Type t in secuGenAssembly.GetTypes())
-                    {
-                        System.Diagnostics.Debug.WriteLine($"  - {t.FullName}");
-                    }
+                    System.Diagnostics.Debug.WriteLine("✗ SGFingerPrintManager not found");
                     return false;
                 }
 
-                // STEP 3: Create instance - PDF shows constructor with no parameters
-                System.Diagnostics.Debug.WriteLine("\nCreating SGFingerPrintManager instance...");
-                m_FPM = Activator.CreateInstance(fpManagerType);
+                // STEP 3: Create instance
+                System.Diagnostics.Debug.WriteLine("\n=== Creating Instance ===");
+                try
+                {
+                    m_FPM = Activator.CreateInstance(fpManagerType);
+                    System.Diagnostics.Debug.WriteLine("✓ Instance created");
+                }
+                catch (System.Reflection.TargetInvocationException tie)
+                {
+                    System.Diagnostics.Debug.WriteLine("✗ Constructor threw exception:");
+                    System.Diagnostics.Debug.WriteLine($"   Type: {tie.InnerException?.GetType().Name}");
+                    System.Diagnostics.Debug.WriteLine($"   Message: {tie.InnerException?.Message}");
+
+                    // Common issues:
+                    if (tie.InnerException?.Message.Contains("sgfplib") == true)
+                    {
+                        System.Diagnostics.Debug.WriteLine("\n   → Native DLL (sgfplib.dll) not found or wrong architecture");
+                    }
+                    else if (tie.InnerException?.Message.Contains("driver") == true)
+                    {
+                        System.Diagnostics.Debug.WriteLine("\n   → SecuGen USB driver not installed");
+                    }
+
+                    return false;
+                }
+
                 if (m_FPM == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: Failed to create instance");
+                    System.Diagnostics.Debug.WriteLine("✗ Instance is null");
                     return false;
                 }
-                System.Diagnostics.Debug.WriteLine("Instance created successfully");
 
-                // STEP 4: Find SGFPMDeviceName enum
-                System.Diagnostics.Debug.WriteLine("\nLooking for SGFPMDeviceName enum...");
+                // STEP 4: Find device name enum
+                System.Diagnostics.Debug.WriteLine("\n=== Finding Device Enum ===");
                 Type deviceNameEnumType = null;
                 string[] possibleEnumNames = new string[]
                 {
-                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFPMDeviceName",
-                    "SecuGen.FDxSDKPro.Windows.SGFPMDeviceName"
+                    "SecuGen.FDxSDKPro.Windows.SGFPMDeviceName",
+                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFPMDeviceName"
                 };
 
                 foreach (string enumName in possibleEnumNames)
@@ -126,187 +140,187 @@ namespace people_pdf
                     deviceNameEnumType = secuGenAssembly.GetType(enumName);
                     if (deviceNameEnumType != null && deviceNameEnumType.IsEnum)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Found enum: {enumName}");
+                        System.Diagnostics.Debug.WriteLine($"✓ Found: {enumName}");
                         break;
                     }
                 }
 
                 if (deviceNameEnumType == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: SGFPMDeviceName enum not found");
+                    System.Diagnostics.Debug.WriteLine("✗ Device enum not found");
                     return false;
                 }
 
-                // List available device names from PDF
-                System.Diagnostics.Debug.WriteLine("Available device names:");
-                foreach (var value in Enum.GetValues(deviceNameEnumType))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  - {value} = {Convert.ToInt32(value)}");
-                }
-
-                // STEP 5: Call Init(SGFPMDeviceName) - According to PDF section 2.2
-                System.Diagnostics.Debug.WriteLine("\nCalling Init method...");
+                // STEP 5: Call Init
+                System.Diagnostics.Debug.WriteLine("\n=== Calling Init ===");
                 MethodInfo initMethod = fpManagerType.GetMethod("Init", new Type[] { deviceNameEnumType });
 
                 if (initMethod == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: Init method not found");
+                    System.Diagnostics.Debug.WriteLine("✗ Init method not found");
                     return false;
                 }
 
-                // Use DEV_FDU05 (U20 device) or DEV_AUTO if available
-                // From PDF: DEV_FDU05 = 6, but let's try to find DEV_AUTO first
+                // Get device value
                 object devValue = null;
-                string[] devicePriority = new string[] { "DEV_AUTO", "DEV_FDU05", "DEV_FDU08", "DEV_FDU07" };
+                string[] devicePriority = new string[] { "DEV_AUTO", "DEV_FDU05" };
 
                 foreach (string devName in devicePriority)
                 {
                     try
                     {
                         devValue = Enum.Parse(deviceNameEnumType, devName);
-                        System.Diagnostics.Debug.WriteLine($"Using device: {devName} = {devValue}");
+                        System.Diagnostics.Debug.WriteLine($"Using device: {devName}");
                         break;
                     }
-                    catch
-                    {
-                        continue;
-                    }
+                    catch { }
                 }
 
                 if (devValue == null)
                 {
-                    // Fallback to first available value
                     var values = Enum.GetValues(deviceNameEnumType);
-                    if (values.Length > 0)
-                    {
-                        devValue = values.GetValue(0);
-                        System.Diagnostics.Debug.WriteLine($"Using fallback device: {devValue}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: No device values available");
-                        return false;
-                    }
+                    devValue = values.Length > 0 ? values.GetValue(0) : null;
                 }
 
-                var initResult = initMethod.Invoke(m_FPM, new object[] { devValue });
-                int errorCode = Convert.ToInt32(initResult);
-                System.Diagnostics.Debug.WriteLine($"Init result: {errorCode} ({GetErrorDescription(errorCode)})");
-
-                // According to PDF: ERROR_NONE = 0
-                if (errorCode != 0)
+                if (devValue == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: Init failed");
+                    System.Diagnostics.Debug.WriteLine("✗ No device enum value available");
                     return false;
                 }
 
-                m_bInit = true;
-                System.Diagnostics.Debug.WriteLine("Init successful");
+                try
+                {
+                    var initResult = initMethod.Invoke(m_FPM, new object[] { devValue });
+                    int errorCode = Convert.ToInt32(initResult);
+                    System.Diagnostics.Debug.WriteLine($"Init result: {errorCode} ({GetErrorDescription(errorCode)})");
 
-                // STEP 6: Call OpenDevice(Int32) - According to PDF section 2.3
-                System.Diagnostics.Debug.WriteLine("\nCalling OpenDevice...");
+                    if (errorCode != 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"✗ Init failed: {GetErrorDescription(errorCode)}");
+
+                        if (errorCode == 55) // DEVICE_NOT_FOUND
+                        {
+                            System.Diagnostics.Debug.WriteLine("   → No SecuGen device connected to USB");
+                        }
+                        else if (errorCode == 5) // DLLLOAD_FAILED
+                        {
+                            System.Diagnostics.Debug.WriteLine("   → Native DLL load failed - check sgfplib.dll");
+                        }
+
+                        return false;
+                    }
+
+                    m_bInit = true;
+                    System.Diagnostics.Debug.WriteLine("✓ Init successful");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✗ Init threw exception: {ex.Message}");
+                    return false;
+                }
+
+                // STEP 6: Open device
+                System.Diagnostics.Debug.WriteLine("\n=== Opening Device ===");
                 MethodInfo openDeviceMethod = fpManagerType.GetMethod("OpenDevice", new Type[] { typeof(Int32) });
 
                 if (openDeviceMethod == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: OpenDevice method not found");
+                    System.Diagnostics.Debug.WriteLine("✗ OpenDevice method not found");
                     return false;
                 }
 
-                // From PDF: USB_AUTO_DETECT = 0x255 (255)
-                var openResult = openDeviceMethod.Invoke(m_FPM, new object[] { 0x255 });
-                int openError = Convert.ToInt32(openResult);
-                System.Diagnostics.Debug.WriteLine($"OpenDevice result: {openError} ({GetErrorDescription(openError)})");
-
-                if (openError != 0)
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine("ERROR: OpenDevice failed");
+                    var openResult = openDeviceMethod.Invoke(m_FPM, new object[] { 0xFF });
+                    int openError = Convert.ToInt32(openResult);
+                    System.Diagnostics.Debug.WriteLine($"OpenDevice result: {openError} ({GetErrorDescription(openError)})");
+
+                    if (openError != 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"✗ Failed: {GetErrorDescription(openError)}");
+                        return false;
+                    }
+
+                    m_bSecuGenDeviceOpened = true;
+                    System.Diagnostics.Debug.WriteLine("✓ Device opened");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✗ OpenDevice threw exception: {ex.Message}");
                     return false;
                 }
 
-                m_bSecuGenDeviceOpened = true;
-                System.Diagnostics.Debug.WriteLine("Device opened successfully");
+                // STEP 7: Get device info
+                System.Diagnostics.Debug.WriteLine("\n=== Getting Device Info ===");
+                GetDeviceInfo();
 
-                // STEP 7: Get device info - According to PDF section 2.4
-                System.Diagnostics.Debug.WriteLine("\nGetting device info...");
+                System.Diagnostics.Debug.WriteLine("\n=====================================");
+                System.Diagnostics.Debug.WriteLine("✓✓✓ FULLY INITIALIZED ✓✓✓");
+                System.Diagnostics.Debug.WriteLine("=====================================\n");
 
-                // Find SGFPMDeviceInfoParam structure
-                Type deviceInfoType = null;
-                string[] possibleDeviceInfoNames = new string[]
-                {
-                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFPMDeviceInfoParam",
-                    "SecuGen.FDxSDKPro.Windows.SGFPMDeviceInfoParam"
-                };
-
-                foreach (string infoName in possibleDeviceInfoNames)
-                {
-                    deviceInfoType = secuGenAssembly.GetType(infoName);
-                    if (deviceInfoType != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Found device info type: {infoName}");
-                        break;
-                    }
-                }
-
-                if (deviceInfoType != null)
-                {
-                    MethodInfo getDeviceInfoMethod = fpManagerType.GetMethod("GetDeviceInfo");
-                    if (getDeviceInfoMethod != null)
-                    {
-                        var deviceInfo = Activator.CreateInstance(deviceInfoType);
-                        object[] infoParams = new object[] { deviceInfo };
-                        var infoResult = getDeviceInfoMethod.Invoke(m_FPM, infoParams);
-                        int infoError = Convert.ToInt32(infoResult);
-
-                        System.Diagnostics.Debug.WriteLine($"GetDeviceInfo result: {infoError}");
-
-                        if (infoError == 0)
-                        {
-                            var updatedDeviceInfo = infoParams[0];
-
-                            // From PDF section 3.2: SGFPMDeviceInfoParam has fields ImageWidth, ImageHeight, ImageDPI
-                            var widthField = deviceInfoType.GetField("ImageWidth");
-                            var heightField = deviceInfoType.GetField("ImageHeight");
-                            var dpiField = deviceInfoType.GetField("ImageDPI");
-
-                            if (widthField != null) m_ImageWidth = (int)widthField.GetValue(updatedDeviceInfo);
-                            if (heightField != null) m_ImageHeight = (int)heightField.GetValue(updatedDeviceInfo);
-                            if (dpiField != null) m_ImageDPI = (int)dpiField.GetValue(updatedDeviceInfo);
-
-                            System.Diagnostics.Debug.WriteLine($"Device info - Width: {m_ImageWidth}, Height: {m_ImageHeight}, DPI: {m_ImageDPI}");
-
-                            // Initialize template arrays
-                            m_RegMin = new Byte[mMaxTemplateSize];
-                            m_VrfMin = new Byte[mMaxTemplateSize];
-                        }
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine("\n=== Fingerprint device fully initialized ===");
                 return true;
-            }
-            catch (FileNotFoundException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ERROR: File not found: {ex.FileName}");
-                return false;
-            }
-            catch (BadImageFormatException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ERROR: DLL architecture mismatch: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine("Make sure you're using x86 build with x86 DLLs");
-                return false;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ERROR: {ex.GetType().Name}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"\n✗ UNEXPECTED ERROR: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
                 return false;
             }
         }
 
+        private void GetDeviceInfo()
+        {
+            try
+            {
+                Type deviceInfoType = null;
+                string[] possibleNames = new string[]
+                {
+                    "SecuGen.FDxSDKPro.Windows.SGFPMDeviceInfoParam",
+                    "SecuGen.FDxSDKPro.DotNet.Windows.SGFPMDeviceInfoParam"
+                };
+
+                foreach (string name in possibleNames)
+                {
+                    deviceInfoType = secuGenAssembly.GetType(name);
+                    if (deviceInfoType != null) break;
+                }
+
+                if (deviceInfoType == null) return;
+
+                MethodInfo getDeviceInfoMethod = fpManagerType.GetMethod("GetDeviceInfo");
+                if (getDeviceInfoMethod == null) return;
+
+                var deviceInfo = Activator.CreateInstance(deviceInfoType);
+                object[] infoParams = new object[] { deviceInfo };
+                var infoResult = getDeviceInfoMethod.Invoke(m_FPM, infoParams);
+                int infoError = Convert.ToInt32(infoResult);
+
+                if (infoError == 0)
+                {
+                    var updatedInfo = infoParams[0];
+                    var widthField = deviceInfoType.GetField("ImageWidth");
+                    var heightField = deviceInfoType.GetField("ImageHeight");
+                    var dpiField = deviceInfoType.GetField("ImageDPI");
+
+                    if (widthField != null) m_ImageWidth = (int)widthField.GetValue(updatedInfo);
+                    if (heightField != null) m_ImageHeight = (int)heightField.GetValue(updatedInfo);
+                    if (dpiField != null) m_ImageDPI = (int)dpiField.GetValue(updatedInfo);
+
+                    System.Diagnostics.Debug.WriteLine($"✓ Device info: {m_ImageWidth}x{m_ImageHeight} @ {m_ImageDPI} DPI");
+
+                    m_RegMin = new Byte[mMaxTemplateSize];
+                    m_VrfMin = new Byte[mMaxTemplateSize];
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetDeviceInfo error: {ex.Message}");
+            }
+        }
+
         private string GetErrorDescription(int errorCode)
         {
-            // From PDF section 3.11: SGFPMError enumeration
             return errorCode switch
             {
                 0 => "SUCCESS",
@@ -339,53 +353,47 @@ namespace people_pdf
                 {
                     if (captureForm.ShowDialog() == DialogResult.OK)
                     {
-                        var fpManagerType = m_FPM.GetType();
-
-                        // According to PDF section 2.5: GetImage(Byte buffer[])
                         var getImageMethod = fpManagerType.GetMethod("GetImage", new Type[] { typeof(Byte[]) });
+                        if (getImageMethod == null) return false;
 
-                        if (getImageMethod != null)
+                        Byte[] fp_image = new Byte[m_ImageWidth * m_ImageHeight];
+                        var result = getImageMethod.Invoke(m_FPM, new object[] { fp_image });
+                        int errorCode = Convert.ToInt32(result);
+
+                        if (errorCode != 0)
                         {
-                            Byte[] fp_image = new Byte[m_ImageWidth * m_ImageHeight];
-                            var result = getImageMethod.Invoke(m_FPM, new object[] { fp_image });
-                            int errorCode = Convert.ToInt32(result);
+                            MessageBox.Show($"Failed to capture fingerprint.\n\nError: {GetErrorDescription(errorCode)}",
+                                "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return false;
+                        }
 
-                            if (errorCode != 0)
-                            {
-                                MessageBox.Show($"Failed to capture fingerprint.\n\nError: {GetErrorDescription(errorCode)}",
-                                    "Capture Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                return false;
-                            }
+                        // Check quality
+                        var getQualityMethod = fpManagerType.GetMethod("GetImageQuality");
+                        int img_qlty = 100;
 
-                            // According to PDF section 2.6: GetImageQuality
-                            var getQualityMethod = fpManagerType.GetMethod("GetImageQuality");
-                            int img_qlty = 100;
+                        if (getQualityMethod != null)
+                        {
+                            object[] qualityParams = new object[] { m_ImageWidth, m_ImageHeight, fp_image, 0 };
+                            var qualityResult = getQualityMethod.Invoke(m_FPM, qualityParams);
+                            int qualityError = Convert.ToInt32(qualityResult);
+                            if (qualityError == 0) img_qlty = (int)qualityParams[3];
+                        }
 
-                            if (getQualityMethod != null)
-                            {
-                                object[] qualityParams = new object[] { m_ImageWidth, m_ImageHeight, fp_image, 0 };
-                                var qualityResult = getQualityMethod.Invoke(m_FPM, qualityParams);
-                                int qualityError = Convert.ToInt32(qualityResult);
-                                if (qualityError == 0) img_qlty = (int)qualityParams[3];
-                            }
+                        if (img_qlty < 50)
+                        {
+                            MessageBox.Show($"Fingerprint quality too low ({img_qlty}%).\n\nRecommended: 50% or higher\n\nPlease try again.",
+                                "Quality Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return false;
+                        }
 
-                            // From PDF: Quality >= 50 recommended for registration
-                            if (img_qlty < 50)
-                            {
-                                MessageBox.Show($"Fingerprint quality too low ({img_qlty}%).\n\nRecommended: 50% or higher\n\nPlease try again with better finger placement.",
-                                    "Quality Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                return false;
-                            }
-
-                            Bitmap bitmap = ConvertRawImageToBitmap(fp_image, m_ImageWidth, m_ImageHeight);
-                            if (bitmap != null)
-                            {
-                                pictureBox.Image?.Dispose();
-                                pictureBox.Image = bitmap;
-                                MessageBox.Show($"Fingerprint captured successfully!\n\nQuality: {img_qlty}%",
-                                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                return true;
-                            }
+                        Bitmap bitmap = ConvertRawImageToBitmap(fp_image, m_ImageWidth, m_ImageHeight);
+                        if (bitmap != null)
+                        {
+                            pictureBox.Image?.Dispose();
+                            pictureBox.Image = bitmap;
+                            MessageBox.Show($"Fingerprint captured successfully!\n\nQuality: {img_qlty}%",
+                                "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return true;
                         }
                     }
                 }
@@ -457,7 +465,6 @@ namespace people_pdf
         {
             try
             {
-                // According to PDF section 2.5: 256 gray-level image
                 Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
                 ColorPalette palette = bitmap.Palette;
                 for (int i = 0; i < 256; i++) palette.Entries[i] = Color.FromArgb(i, i, i);
@@ -480,16 +487,12 @@ namespace people_pdf
         {
             try
             {
-                if (m_bSecuGenDeviceOpened && m_FPM != null)
+                if (m_bSecuGenDeviceOpened && m_FPM != null && fpManagerType != null)
                 {
-                    var fpManagerType = m_FPM.GetType();
                     fpManagerType.GetMethod("CloseDevice")?.Invoke(m_FPM, null);
                     m_bSecuGenDeviceOpened = false;
                 }
-                if (m_bInit && m_FPM != null)
-                {
-                    m_bInit = false;
-                }
+                m_bInit = false;
             }
             catch (Exception ex)
             {
