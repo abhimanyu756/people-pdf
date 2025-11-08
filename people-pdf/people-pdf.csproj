@@ -5,14 +5,14 @@
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<RootNamespace>people_pdf</RootNamespace>
 		<Nullable>enable</Nullable>
-		<UseWindowsForms>true</UseWindowsForms>	
+		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<PlatformTarget>x64</PlatformTarget>
 		<Configurations>Debug;Release</Configurations>
 		<Platforms>x64</Platforms>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
 		<Optimize>False</Optimize>
 		<DebugType>full</DebugType>
 		<DebugSymbols>true</DebugSymbols>
@@ -26,7 +26,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- SecuGen .NET wrapper for .NET 6+ -->
 		<Reference Include="SecuGen.FDxSDKPro.DotNet.Windows">
 			<HintPath>lib\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
 			<Private>True</Private>
@@ -34,12 +33,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Copy .NET wrapper DLL -->
 		<None Update="lib\SecuGen.FDxSDKPro.DotNet.Windows.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
-
-		<!-- Native DLLs required by SecuGen SDK (must be in root output folder) -->
 		<None Include="sgfplib.dll" Condition="Exists('sgfplib.dll')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
@@ -49,7 +45,7 @@
 		<None Include="sgwsqlib.dll" Condition="Exists('sgwsqlib.dll')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
-		<None Include="sgfdusdax.dll" Condition="Exists('sgfdusdax.dll')">
+		<None Include="sgfdusdax64.dll" Condition="Exists('sgfdusdax64.dll')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
