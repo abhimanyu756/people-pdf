@@ -95,11 +95,13 @@ namespace people_pdf
         private TextBox textBoxDocumentNumber;
         private Button buttonGeneratePdf;
 
+       
+
         public Form1()
         {
             InitializeComponent();
-            InitializeCustomLayout();
-            InitializeFingerprintHandler();
+            InitializeFingerprintHandler();  // MOVE THIS BEFORE InitializeCustomLayout
+            InitializeCustomLayout();        // Now the UI will see the correct status
         }
 
         private void InitializeFingerprintHandler()

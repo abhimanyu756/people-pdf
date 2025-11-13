@@ -254,7 +254,7 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_00AAD0D44AD94C989B9AB853C6E3F54A"
             {
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\sgfplib.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\sgfplib.dll"
             "TargetName" = "8:sgfplib.dll"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
@@ -274,7 +274,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_17EA884A8E884A77AF6098FDF89E0EBC"
             {
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\sgfdusdax64.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\sgfdusdax64.dll"
             "TargetName" = "8:sgfdusdax64.dll"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
@@ -325,7 +325,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_59FA0A5E40254ED1BF4136AD2CFA6041"
             {
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\sgfpamx.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\sgfpamx.dll"
             "TargetName" = "8:sgfpamx.dll"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
@@ -345,7 +345,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7D6C1C03858B4EC392FEC1025E3BA6AE"
             {
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\sgbledev.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\sgbledev.dll"
             "TargetName" = "8:sgbledev.dll"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
@@ -478,7 +478,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F97D3A389007459F934F3581E28DFFA4"
             {
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\sgwsqlib.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\sgwsqlib.dll"
             "TargetName" = "8:sgwsqlib.dll"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
@@ -509,7 +509,7 @@
                     "Attributes" = "3:512"
                     }
                 }
-            "SourcePath" = "8:..\\people-pdf\\bin\\Debug\\net8.0-windows\\SecuGen.FDxSDKPro.DotNet.Windows.dll"
+            "SourcePath" = "8:..\\people-pdf\\bin\\x64\\Debug\\net8.0-windows\\SecuGen.FDxSDKPro.DotNet.Windows.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5A2C94B70D98411386919FF0E5BBD45D"
