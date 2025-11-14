@@ -9,9 +9,10 @@ namespace people_pdf
 {
     public partial class Form1 : Form
     {
-        private SaveFileDialog saveFileDialogPdf;   
-        private ComboBox comboBoxAgreementType;         
+        private SaveFileDialog saveFileDialogPdf;
+        private ComboBox comboBoxAgreementType;
         private FingerprintHandler fingerprintHandler;
+        private Button buttonClearForm; // NEW: Clear button
 
         // Party 1
         private TextBox textBoxParty1Name;
@@ -24,7 +25,7 @@ namespace people_pdf
         private Button buttonUploadParty1Image;
         private Button buttonUploadParty1Fingerprint;
         private Button buttonCaptureParty1Fingerprint;
-        private Button buttonCameraParty1Image; // NEW: Camera button
+        private Button buttonCameraParty1Image;
 
         // Party 2
         private TextBox textBoxParty2Name;
@@ -37,7 +38,7 @@ namespace people_pdf
         private Button buttonUploadParty2Image;
         private Button buttonUploadParty2Fingerprint;
         private Button buttonCaptureParty2Fingerprint;
-        private Button buttonCameraParty2Image; // NEW: Camera button
+        private Button buttonCameraParty2Image;
 
         // Party 3
         private TextBox textBoxParty3Name;
@@ -50,7 +51,7 @@ namespace people_pdf
         private Button buttonUploadParty3Image;
         private Button buttonUploadParty3Fingerprint;
         private Button buttonCaptureParty3Fingerprint;
-        private Button buttonCameraParty3Image; // NEW: Camera button
+        private Button buttonCameraParty3Image;
 
         // Party 4
         private TextBox textBoxParty4Name;
@@ -63,7 +64,7 @@ namespace people_pdf
         private Button buttonUploadParty4Image;
         private Button buttonUploadParty4Fingerprint;
         private Button buttonCaptureParty4Fingerprint;
-        private Button buttonCameraParty4Image; // NEW: Camera button
+        private Button buttonCameraParty4Image;
 
         // Party 5
         private TextBox textBoxParty5Name;
@@ -76,7 +77,7 @@ namespace people_pdf
         private Button buttonUploadParty5Image;
         private Button buttonUploadParty5Fingerprint;
         private Button buttonCaptureParty5Fingerprint;
-        private Button buttonCameraParty5Image; // NEW: Camera button
+        private Button buttonCameraParty5Image;
 
         // Party 6
         private TextBox textBoxParty6Name;
@@ -89,19 +90,17 @@ namespace people_pdf
         private Button buttonUploadParty6Image;
         private Button buttonUploadParty6Fingerprint;
         private Button buttonCaptureParty6Fingerprint;
-        private Button buttonCameraParty6Image; // NEW: Camera button
+        private Button buttonCameraParty6Image;
 
         // Document number
         private TextBox textBoxDocumentNumber;
         private Button buttonGeneratePdf;
 
-       
-
         public Form1()
         {
             InitializeComponent();
-            InitializeFingerprintHandler();  // MOVE THIS BEFORE InitializeCustomLayout
-            InitializeCustomLayout();        // Now the UI will see the correct status
+            InitializeCustomLayout();
+            InitializeFingerprintHandler();
         }
 
         private void InitializeFingerprintHandler()
@@ -114,7 +113,6 @@ namespace people_pdf
                 if (!deviceReady)
                 {
                     System.Diagnostics.Debug.WriteLine("Fingerprint device not available - using upload feature only");
-                    // Don't show a dialog - just disable the scan buttons (already done in CreatePartyControls)
                 }
                 else
                 {
@@ -124,7 +122,6 @@ namespace people_pdf
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Fingerprint handler error: {ex.Message}");
-                // Don't show error dialog - the app will work without fingerprint scanner
             }
         }
 
@@ -166,7 +163,7 @@ namespace people_pdf
             };
             comboBoxAgreementType.Items.AddRange(new string[] { "Affidavit", "Agreement" });
             comboBoxAgreementType.SelectedIndex = 0;
-                
+
             // Add device status labels
             Label lblFingerprintStatus = new Label
             {
@@ -177,7 +174,6 @@ namespace people_pdf
                 ForeColor = fingerprintHandler?.IsDeviceReady() == true ? Color.Green : Color.Orange
             };
 
-            // NEW: Add camera status
             Label lblCameraStatus = new Label
             {
                 Text = WebcamHandler.IsCameraAvailable() ? "📷 Camera: Available" : "⚠️ Camera: Not Available",
@@ -186,6 +182,19 @@ namespace people_pdf
                 Font = new System.Drawing.Font("Segoe UI", 9),
                 ForeColor = WebcamHandler.IsCameraAvailable() ? Color.Green : Color.Orange
             };
+
+            // NEW: Clear Form button
+            buttonClearForm = new Button
+            {
+                Text = "🗑️ Clear All Data",
+                Location = new Point(950, 12),
+                Size = new Size(140, 30),
+                Font = new System.Drawing.Font("Segoe UI", 9, FontStyle.Bold),
+                BackColor = Color.FromArgb(220, 53, 69),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            buttonClearForm.FlatAppearance.BorderSize = 0;
 
             // Calculate responsive dimensions for 6 parties (3x2 grid)
             int groupBoxWidth = Math.Min((formWidth - 80) / 3, 450);
@@ -255,7 +264,8 @@ namespace people_pdf
             this.Controls.Add(lblAgreementType);
             this.Controls.Add(comboBoxAgreementType);
             this.Controls.Add(lblFingerprintStatus);
-            this.Controls.Add(lblCameraStatus); // NEW: Add camera status
+            this.Controls.Add(lblCameraStatus);
+            this.Controls.Add(buttonClearForm); // NEW: Add clear button
             this.Controls.AddRange(partyGroups);
             this.Controls.Add(lblDocNumber);
             this.Controls.Add(textBoxDocumentNumber);
@@ -276,10 +286,9 @@ namespace people_pdf
             int textBoxHeight = 25;
             int spacing = 30;
 
-            // Get references to the appropriate party controls
             TextBox nameBox, aadharBox, addressBox, panBox, mobileBox;
             PictureBox imageBox, fingerprintBox;
-            Button imageButton, fingerprintButton, captureButton, cameraButton; // NEW: Add cameraButton
+            Button imageButton, fingerprintButton, captureButton, cameraButton;
 
             GetPartyControls(partyNumber, out nameBox, out aadharBox, out addressBox, out panBox, out mobileBox,
                 out imageBox, out fingerprintBox, out imageButton, out fingerprintButton, out captureButton, out cameraButton);
@@ -352,7 +361,6 @@ namespace people_pdf
                 BackColor = Color.FromArgb(245, 245, 245)
             };
 
-            // MODIFIED: Photo buttons - Upload and Camera
             int buttonWidth = Math.Max(50, (imageSize - 5) / 2);
 
             imageButton = new Button
@@ -366,7 +374,6 @@ namespace people_pdf
             };
             imageButton.FlatAppearance.BorderColor = Color.FromArgb(160, 160, 160);
 
-            // NEW: Camera button for photos
             cameraButton = new Button
             {
                 Text = "📷 Camera",
@@ -403,7 +410,6 @@ namespace people_pdf
                 BackColor = Color.FromArgb(245, 245, 245)
             };
 
-            // Fingerprint buttons - Upload and Scan
             fingerprintButton = new Button
             {
                 Text = "📄 Upload",
@@ -435,24 +441,21 @@ namespace people_pdf
             // Add all controls to the parent group
             parentGroup.Controls.AddRange(new Control[] {
                 nameBox, aadharBox, addressBox, panBox, mobileBox,
-                photoLabel, imageBox, imageButton, cameraButton, // NEW: Added cameraButton
+                photoLabel, imageBox, imageButton, cameraButton,
                 thumbLabel, fingerprintBox, fingerprintButton, captureButton
             });
         }
 
-        // MODIFIED: Updated method signature to include camera button
         private void GetPartyControls(int partyNumber, out TextBox nameBox, out TextBox aadharBox,
             out TextBox addressBox, out TextBox panBox, out TextBox mobileBox,
             out PictureBox imageBox, out PictureBox fingerprintBox, out Button imageButton,
             out Button fingerprintButton, out Button captureButton, out Button cameraButton)
         {
-            // Initialize all to null, will be created in CreatePartyControls
             nameBox = null; aadharBox = null; addressBox = null; panBox = null; mobileBox = null;
             imageBox = null; fingerprintBox = null; imageButton = null; fingerprintButton = null;
-            captureButton = null; cameraButton = null; // NEW: Initialize cameraButton
+            captureButton = null; cameraButton = null;
         }
 
-        // MODIFIED: Updated method signature to include camera button
         private void SetPartyControls(int partyNumber, TextBox nameBox, TextBox aadharBox,
             TextBox addressBox, TextBox panBox, TextBox mobileBox,
             PictureBox imageBox, PictureBox fingerprintBox,
@@ -467,7 +470,7 @@ namespace people_pdf
                     pictureBoxParty1Image = imageBox; pictureBoxParty1Fingerprint = fingerprintBox;
                     buttonUploadParty1Image = imageButton; buttonUploadParty1Fingerprint = fingerprintButton;
                     buttonCaptureParty1Fingerprint = captureButton;
-                    buttonCameraParty1Image = cameraButton; // NEW
+                    buttonCameraParty1Image = cameraButton;
                     break;
                 case 2:
                     textBoxParty2Name = nameBox; textBoxParty2Aadhar = aadharBox;
@@ -476,7 +479,7 @@ namespace people_pdf
                     pictureBoxParty2Image = imageBox; pictureBoxParty2Fingerprint = fingerprintBox;
                     buttonUploadParty2Image = imageButton; buttonUploadParty2Fingerprint = fingerprintButton;
                     buttonCaptureParty2Fingerprint = captureButton;
-                    buttonCameraParty2Image = cameraButton; // NEW
+                    buttonCameraParty2Image = cameraButton;
                     break;
                 case 3:
                     textBoxParty3Name = nameBox; textBoxParty3Aadhar = aadharBox;
@@ -485,7 +488,7 @@ namespace people_pdf
                     pictureBoxParty3Image = imageBox; pictureBoxParty3Fingerprint = fingerprintBox;
                     buttonUploadParty3Image = imageButton; buttonUploadParty3Fingerprint = fingerprintButton;
                     buttonCaptureParty3Fingerprint = captureButton;
-                    buttonCameraParty3Image = cameraButton; // NEW
+                    buttonCameraParty3Image = cameraButton;
                     break;
                 case 4:
                     textBoxParty4Name = nameBox; textBoxParty4Aadhar = aadharBox;
@@ -494,7 +497,7 @@ namespace people_pdf
                     pictureBoxParty4Image = imageBox; pictureBoxParty4Fingerprint = fingerprintBox;
                     buttonUploadParty4Image = imageButton; buttonUploadParty4Fingerprint = fingerprintButton;
                     buttonCaptureParty4Fingerprint = captureButton;
-                    buttonCameraParty4Image = cameraButton; // NEW
+                    buttonCameraParty4Image = cameraButton;
                     break;
                 case 5:
                     textBoxParty5Name = nameBox; textBoxParty5Aadhar = aadharBox;
@@ -503,7 +506,7 @@ namespace people_pdf
                     pictureBoxParty5Image = imageBox; pictureBoxParty5Fingerprint = fingerprintBox;
                     buttonUploadParty5Image = imageButton; buttonUploadParty5Fingerprint = fingerprintButton;
                     buttonCaptureParty5Fingerprint = captureButton;
-                    buttonCameraParty5Image = cameraButton; // NEW
+                    buttonCameraParty5Image = cameraButton;
                     break;
                 case 6:
                     textBoxParty6Name = nameBox; textBoxParty6Aadhar = aadharBox;
@@ -512,7 +515,7 @@ namespace people_pdf
                     pictureBoxParty6Image = imageBox; pictureBoxParty6Fingerprint = fingerprintBox;
                     buttonUploadParty6Image = imageButton; buttonUploadParty6Fingerprint = fingerprintButton;
                     buttonCaptureParty6Fingerprint = captureButton;
-                    buttonCameraParty6Image = cameraButton; // NEW
+                    buttonCameraParty6Image = cameraButton;
                     break;
             }
         }
@@ -544,7 +547,7 @@ namespace people_pdf
             buttonUploadParty6Fingerprint.Click += (s, e) => UploadImageToPictureBox(pictureBoxParty6Fingerprint);
             buttonCaptureParty6Fingerprint.Click += (s, e) => CaptureFingerprint(pictureBoxParty6Fingerprint);
 
-            // NEW: Camera button event handlers
+            // Camera button event handlers
             buttonCameraParty1Image.Click += (s, e) => CapturePhotoFromCamera(pictureBoxParty1Image);
             buttonCameraParty2Image.Click += (s, e) => CapturePhotoFromCamera(pictureBoxParty2Image);
             buttonCameraParty3Image.Click += (s, e) => CapturePhotoFromCamera(pictureBoxParty3Image);
@@ -553,6 +556,12 @@ namespace people_pdf
             buttonCameraParty6Image.Click += (s, e) => CapturePhotoFromCamera(pictureBoxParty6Image);
 
             buttonGeneratePdf.Click += ButtonGeneratePdf_Click;
+
+            // NEW: Agreement type changed event - clear form when changed
+            comboBoxAgreementType.SelectedIndexChanged += ComboBoxAgreementType_SelectedIndexChanged;
+
+            // NEW: Clear button event handler
+            buttonClearForm.Click += ButtonClearForm_Click;
 
             // Add Aadhaar number validation (digits only)
             textBoxParty1Aadhar.KeyPress += OnlyNumeric_KeyPress;
@@ -574,7 +583,112 @@ namespace people_pdf
             this.FormClosing += Form1_FormClosing;
         }
 
-        // NEW: Camera capture method
+        // NEW: Event handler for agreement type change
+        private void ComboBoxAgreementType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Ask for confirmation before clearing
+            DialogResult result = MessageBox.Show(
+                "Changing the agreement type will clear all entered data. Do you want to continue?",
+                "Confirm Clear Data",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                ClearAllFormData();
+            }
+            else
+            {
+                // Revert the selection to previous value
+                // This is done by temporarily removing the event handler
+                comboBoxAgreementType.SelectedIndexChanged -= ComboBoxAgreementType_SelectedIndexChanged;
+                comboBoxAgreementType.SelectedIndex = (comboBoxAgreementType.SelectedIndex == 0) ? 1 : 0;
+                comboBoxAgreementType.SelectedIndexChanged += ComboBoxAgreementType_SelectedIndexChanged;
+            }
+        }
+
+        // NEW: Event handler for clear button
+        private void ButtonClearForm_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "Are you sure you want to clear all entered data?",
+                "Confirm Clear All",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                ClearAllFormData();
+                MessageBox.Show("All data has been cleared successfully.", "Data Cleared", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        // NEW: Method to clear all form data
+        private void ClearAllFormData()
+        {
+            try
+            {
+                // Clear all Party 1 fields
+                ClearPartyData(textBoxParty1Name, textBoxParty1Aadhar, textBoxParty1Address,
+                    textBoxParty1Pan, textBoxParty1Mobile, pictureBoxParty1Image, pictureBoxParty1Fingerprint);
+
+                // Clear all Party 2 fields
+                ClearPartyData(textBoxParty2Name, textBoxParty2Aadhar, textBoxParty2Address,
+                    textBoxParty2Pan, textBoxParty2Mobile, pictureBoxParty2Image, pictureBoxParty2Fingerprint);
+
+                // Clear all Party 3 fields
+                ClearPartyData(textBoxParty3Name, textBoxParty3Aadhar, textBoxParty3Address,
+                    textBoxParty3Pan, textBoxParty3Mobile, pictureBoxParty3Image, pictureBoxParty3Fingerprint);
+
+                // Clear all Party 4 fields
+                ClearPartyData(textBoxParty4Name, textBoxParty4Aadhar, textBoxParty4Address,
+                    textBoxParty4Pan, textBoxParty4Mobile, pictureBoxParty4Image, pictureBoxParty4Fingerprint);
+
+                // Clear all Party 5 fields
+                ClearPartyData(textBoxParty5Name, textBoxParty5Aadhar, textBoxParty5Address,
+                    textBoxParty5Pan, textBoxParty5Mobile, pictureBoxParty5Image, pictureBoxParty5Fingerprint);
+
+                // Clear all Party 6 fields
+                ClearPartyData(textBoxParty6Name, textBoxParty6Aadhar, textBoxParty6Address,
+                    textBoxParty6Pan, textBoxParty6Mobile, pictureBoxParty6Image, pictureBoxParty6Fingerprint);
+
+                // Clear document number
+                if (textBoxDocumentNumber != null)
+                {
+                    textBoxDocumentNumber.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error clearing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // NEW: Helper method to clear individual party data
+        private void ClearPartyData(TextBox nameBox, TextBox aadharBox, TextBox addressBox,
+            TextBox panBox, TextBox mobileBox, PictureBox imageBox, PictureBox fingerprintBox)
+        {
+            // Clear text boxes
+            nameBox?.Clear();
+            aadharBox?.Clear();
+            addressBox?.Clear();
+            panBox?.Clear();
+            mobileBox?.Clear();
+
+            // Clear and dispose images
+            if (imageBox?.Image != null)
+            {
+                imageBox.Image.Dispose();
+                imageBox.Image = null;
+            }
+
+            if (fingerprintBox?.Image != null)
+            {
+                fingerprintBox.Image.Dispose();
+                fingerprintBox.Image = null;
+            }
+        }
+
         private void CapturePhotoFromCamera(PictureBox targetPictureBox)
         {
             try
@@ -590,12 +704,8 @@ namespace people_pdf
                 {
                     if (cameraForm.ShowDialog() == DialogResult.OK && cameraForm.CapturedImage != null)
                     {
-                        // Dispose existing image to free memory
                         targetPictureBox.Image?.Dispose();
-
-                        // Set the captured image
                         targetPictureBox.Image = new Bitmap(cameraForm.CapturedImage);
-
                         MessageBox.Show("📷 Photo captured successfully!",
                             "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -608,7 +718,6 @@ namespace people_pdf
             }
         }
 
-        // Only allow digits
         private void OnlyNumeric_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
@@ -672,7 +781,6 @@ namespace people_pdf
         {
             try
             {
-                // Validation
                 if (!ValidateRequiredFields())
                 {
                     MessageBox.Show("Please fill all required fields (Name, Aadhaar Number, and Address) for at least one party.",
@@ -680,11 +788,9 @@ namespace people_pdf
                     return;
                 }
 
-                // Get first party details for filename
                 string firstName = GetTextSafely(textBoxParty1Name);
                 string firstAadhar = GetTextSafely(textBoxParty1Aadhar);
                 string fileName = $"{firstName}_{firstAadhar}.pdf";
-                // Remove invalid filename characters
                 fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
 
                 saveFileDialogPdf.Filter = "PDF Files|*.pdf";
@@ -706,7 +812,6 @@ namespace people_pdf
 
         private bool ValidateRequiredFields()
         {
-            // Check if at least one party has all required fields filled
             return HasRequiredFields(textBoxParty1Name, textBoxParty1Aadhar, textBoxParty1Address) ||
                    HasRequiredFields(textBoxParty2Name, textBoxParty2Aadhar, textBoxParty2Address) ||
                    HasRequiredFields(textBoxParty3Name, textBoxParty3Aadhar, textBoxParty3Address) ||
@@ -731,7 +836,6 @@ namespace people_pdf
                 writer.PageEvent = new PdfFooterEvent(GetTextSafely(textBoxDocumentNumber));
                 document.Open();
 
-                // Title
                 string agreementType = comboBoxAgreementType.SelectedItem?.ToString() ?? "Agreement";
                 iTextSharp.text.Font titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 16);
                 Paragraph title = new Paragraph(agreementType.ToUpper(), titleFont);
@@ -739,12 +843,10 @@ namespace people_pdf
                 document.Add(title);
                 document.Add(Chunk.NEWLINE);
 
-                // Create table with 3 columns
                 PdfPTable table = new PdfPTable(3);
                 table.WidthPercentage = 100;
-                table.SetWidths(new float[] { 5f, 2f, 2f }); // Party Details, Photo, Fingerprint
+                table.SetWidths(new float[] { 5f, 2f, 2f });
 
-                // Header row
                 iTextSharp.text.Font headerFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 11);
                 BaseColor headerColor = new BaseColor(224, 224, 224);
 
@@ -767,7 +869,6 @@ namespace people_pdf
                 table.AddCell(headerCell2);
                 table.AddCell(headerCell3);
 
-                // Add party rows
                 AddPartyRowToPdf(table, "PARTY 1", textBoxParty1Name, textBoxParty1Aadhar, textBoxParty1Address,
                     textBoxParty1Pan, textBoxParty1Mobile, pictureBoxParty1Image.Image, pictureBoxParty1Fingerprint.Image);
                 AddPartyRowToPdf(table, "PARTY 2", textBoxParty2Name, textBoxParty2Aadhar, textBoxParty2Address,
@@ -784,7 +885,6 @@ namespace people_pdf
                 document.Add(table);
                 document.Add(Chunk.NEWLINE);
 
-                // Add admission paragraph
                 iTextSharp.text.Font boldFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12);
                 iTextSharp.text.Font normalFont = FontFactory.GetFont(FontFactory.HELVETICA, 10);
 
@@ -793,7 +893,6 @@ namespace people_pdf
                 document.Add(admissionTitle);
                 document.Add(Chunk.NEWLINE);
 
-                string agreementTypeForText = agreementType.Replace(" Agreement", "").ToLower();
                 string admissionText = $"The undersigned parties hereby admit that they have executed this Document of their own free will. The Identifiers confirm that they are well acquainted with the said parties. Furthermore, the parties have given their full and informed consent to Singh Enterprises Legal to collect and use their Aadhaar Number, Name, and Fingerprint for the purposes related to this Document. They acknowledge that they are fully aware of the nature, contents, and implications of this Document.";
 
                 Paragraph admissionPara = new Paragraph(admissionText, normalFont);
@@ -814,14 +913,12 @@ namespace people_pdf
             string mobile = GetTextSafely(mobileBox);
             string address = GetTextSafely(addressBox);
 
-            // Skip empty parties
             if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(aadhar))
                 return;
 
             iTextSharp.text.Font partyFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10);
             iTextSharp.text.Font normalFont = FontFactory.GetFont(FontFactory.HELVETICA, 9);
 
-            // Party details cell
             Phrase partyPhrase = new Phrase();
             partyPhrase.Add(new Chunk($"{partyLabel}\n", partyFont));
             partyPhrase.Add(new Chunk($"Name: {name}\n", normalFont));
@@ -837,7 +934,6 @@ namespace people_pdf
             partyCell.Padding = 6;
             table.AddCell(partyCell);
 
-            // Photo cell
             if (image != null)
             {
                 try
@@ -873,7 +969,6 @@ namespace people_pdf
                 table.AddCell(emptyCell);
             }
 
-            // Fingerprint cell
             if (fingerprint != null)
             {
                 try
@@ -916,7 +1011,6 @@ namespace people_pdf
         }
     }
 
-    // PDF Footer Event Handler
     public class PdfFooterEvent : PdfPageEventHelper
     {
         private readonly string docNumber;
